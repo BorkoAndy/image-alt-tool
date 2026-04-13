@@ -112,10 +112,10 @@
           altText.textContent = data.alt_text;
           result.style.display = "block";
         } else {
-          throw new Error("No result returned");
+          throw new Error(data.error || "No result returned");
         }
       } catch (e) {
-        error.textContent = "Error: " + (data?.error || e.message || "unknown error");
+        error.textContent = "Error: " + (e.message || "unknown error");
         error.style.display = "block";
       } finally {
         btn.disabled = false;
