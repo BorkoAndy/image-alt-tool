@@ -13,7 +13,7 @@ class handler(BaseHTTPRequestHandler):
             image_url = body.get("url", "")
 
             genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-1.5-flash")
 
             with urllib.request.urlopen(image_url) as resp:
                 image_data = resp.read()
