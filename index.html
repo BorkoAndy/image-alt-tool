@@ -23,13 +23,15 @@
       margin-bottom: 24px;
     }
 
-    input {
+    input,
+    select {
       width: 100%;
       padding: 10px;
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 6px;
       box-sizing: border-box;
+      margin-top: 10px;
     }
 
     button {
@@ -75,9 +77,19 @@
 
 <body>
   <h1>ALT Text Generator</h1>
-  <p>Paste an image URL and get ready-to-use ALT text powered by Gemini AI.</p>
+  <p>Paste an image URL, choose a language and get ready-to-use ALT text powered by Gemini AI.</p>
 
   <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
+
+  <select id="lang-select">
+    <option value="English">English</option>
+    <option value="German">Deutsch</option>
+    <option value="French">Français</option>
+    <option value="Spanish">Español</option>
+    <option value="Italian">Italiano</option>
+    <option value="Polish">Polski</option>
+  </select>
+
   <button id="btn" onclick="analyze()">Generate ALT text</button>
   <div id="error"></div>
 
@@ -89,6 +101,7 @@
   <script>
     async function analyze() {
       const url = document.getElementById("url-input").value.trim();
+      const lang = document.getElementById("lang-select").value;
       const btn = document.getElementById("btn");
       const result = document.getElementById("result");
       const altText = document.getElementById("alt-text");
@@ -105,17 +118,17 @@
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ url, lang })
         });
         const data = await res.json();
         if (data.alt_text) {
           altText.textContent = data.alt_text;
           result.style.display = "block";
         } else {
-          throw new Error("No result returned");
+          throw new Error(data.error || "No result returned");
         }
       } catch (e) {
-        error.textContent = "Error: " + (data?.error || e.message || "unknown error");
+        error.textContent = "Error: " + (e.message || "unknown error");
         error.style.display = "block";
       } finally {
         btn.disabled = false;
