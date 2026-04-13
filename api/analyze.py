@@ -1,11 +1,19 @@
 import os
-import json
 from http.server import BaseHTTPRequestHandler
-import urllib.request
+import json
 import google.generativeai as genai
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        models = [m.name for m in genai.list_models()]
+        
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"models": models}).encode())
+        
     def do_POST(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -14,7 +22,7 @@ class handler(BaseHTTPRequestHandler):
             lang = body.get("lang", "English")
 
             genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel("gemini-2.5-flash")
 
             with urllib.request.urlopen(image_url) as resp:
                 image_data = resp.read()
