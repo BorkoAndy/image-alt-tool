@@ -20,7 +20,7 @@ class handler(BaseHTTPRequestHandler):
                 content_type = resp.headers.get_content_type()
 
             response = model.generate_content([
-                "Generate a concise, descriptive ALT text for this image. Respond in German. Return only the ALT text, nothing else.",
+                "Generate a concise, descriptive ALT text for this image. Return only the ALT text, nothing else.",
                 {"mime_type": content_type, "data": image_data}
             ])
 
