@@ -1,7 +1,6 @@
 import os
 import json
 from http.server import BaseHTTPRequestHandler
-import urllib.request
 import google.generativeai as genai
 
 
@@ -14,14 +13,11 @@ class handler(BaseHTTPRequestHandler):
             lang = body.get("lang", "English")
 
             genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-2.0-flash-lite")
-            with urllib.request.urlopen(image_url) as resp:
-                image_data = resp.read()
-                content_type = resp.headers.get_content_type()
+            model = genai.GenerativeModel("gemini-2.5-flash")
 
             response = model.generate_content([
-                f"Generate a concise, descriptive ALT text for this image in {lang}. Return only the ALT text, nothing else.",
-                {"mime_type": content_type, "data": image_data}
+                {"mime_type": "image/jpeg", "url": image_url},
+                f"Generate a concise, descriptive ALT text for this image in {lang}. Return only the ALT text, nothing else."
             ])
 
             self.send_response(200)
