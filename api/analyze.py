@@ -14,7 +14,7 @@ class handler(BaseHTTPRequestHandler):
             lang = body.get("lang", "English")
 
             genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-2.0-flash")
 
             with urllib.request.urlopen(image_url) as resp:
                 image_data = resp.read()
