@@ -14,9 +14,8 @@ class handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             image_url = body.get("url", "")
             model = body.get("model", "gemini")
-
-            prompt = "Generate a concise, descriptive ALT text for this image. Return only the ALT text, nothing else."
-
+            lang = body.get("lang", "English")
+            prompt = f"Generate a concise, descriptive ALT text for this image in {lang}. Maximum 100 characters. Return only the ALT text, nothing else."
             if model == "groq":
                 client = Groq(api_key=os.environ["GROQ_API_KEY"])
                 completion = client.chat.completions.create(

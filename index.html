@@ -96,8 +96,13 @@
   <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
   <select id="model-select"
     style="margin-top: 10px; width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
-    <option value="gemini">Gemini (Google)</option>
+    <!-- <option value="gemini">Gemini (Google)</option> -->
     <option value="groq">Groq (Llama 4)</option>
+  </select>
+  <select id="lang-select"
+    style="margin-top: 10px; width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
+    <option value="English">English</option>
+    <option value="German">Deutsch</option>
   </select>
   <div id="preview">
     <label>Image preview:</label><br>
@@ -109,6 +114,7 @@
   <div id="result">
     <label>ALT text:</label>
     <div id="alt-text"></div>
+    <div id="char-count" style="margin-top: 6px; font-size: 0.8rem; color: #999;"></div>
   </div>
 
   <script>
@@ -119,7 +125,7 @@
       const altText = document.getElementById("alt-text");
       const error = document.getElementById("error");
       const model = document.getElementById("model-select").value;
-
+      const lang = document.getElementById("lang-select").value;
       if (!url) return;
 
       btn.disabled = true;
@@ -131,12 +137,12 @@
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, model })
+          body: JSON.stringify({ url, model, lang })
         });
         const data = await res.json();
         if (data.alt_text) {
           altText.textContent = data.alt_text;
-          result.style.display = "block";
+          document.getElementById("char-count").textContent = data.alt_text.length + " characters"; result.style.display = "block";
         } else {
           throw new Error(data.error || "No result returned");
         }
