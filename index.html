@@ -86,6 +86,17 @@
       font-size: 0.85rem;
       color: #666;
     }
+
+    #limits {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #999;
+      display: none;
+    }
+
+    #limits span {
+      margin-right: 16px;
+    }
   </style>
 </head>
 
@@ -116,6 +127,11 @@
     <div id="alt-text"></div>
     <div id="char-count" style="margin-top: 6px; font-size: 0.8rem; color: #999;"></div>
   </div>
+  <div id="limits">
+    <span>Requests this minute: <b id="rpm-remaining">?</b> / <b id="rpm-limit">?</b></span>
+    <span>Requests today: <b id="rpd-remaining">?</b> / <b id="rpd-limit">?</b></span>
+  </div>
+
 
   <script>
     async function analyze() {
@@ -143,6 +159,15 @@
         if (data.alt_text) {
           altText.textContent = data.alt_text;
           document.getElementById("char-count").textContent = data.alt_text.length + " characters"; result.style.display = "block";
+          if (data.limits) {
+            document.getElementById("rpm-remaining").textContent = data.limits.rpm_remaining;
+            document.getElementById("rpm-limit").textContent = data.limits.rpm_limit;
+            document.getElementById("rpd-remaining").textContent = data.limits.rpd_remaining;
+            document.getElementById("rpd-limit").textContent = data.limits.rpd_limit;
+            document.getElementById("limits").style.display = "block";
+          } else {
+            document.getElementById("limits").style.display = "none";
+          }
         } else {
           throw new Error(data.error || "No result returned");
         }
