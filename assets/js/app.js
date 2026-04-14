@@ -22,7 +22,10 @@ const SELECTORS = {
     themeIcon: '#theme-toggle-icon',
     sliderTrack: '#slider-track',
     sliderHandle: '#slider-handle',
-    sliderText: '#slider-text'
+    sliderText: '#slider-text',
+    loginOverlay: '#login-overlay',
+    loginForm: '#login-form',
+    loginPassword: '#login-password'
 };
 
 let isVerified = false;
@@ -45,6 +48,52 @@ function toggleTheme() {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
     document.querySelector(SELECTORS.themeIcon).textContent = isDark ? '☀️' : '🌙';
+}
+
+/**
+ * Authentication Management
+ */
+function getAuth() {
+    return localStorage.getItem('app_password');
+}
+
+function setAuth(password) {
+    localStorage.setItem('app_password', password);
+}
+
+function clearAuth() {
+    localStorage.removeItem('app_password');
+}
+
+function checkAuth() {
+    const overlay = document.querySelector(SELECTORS.loginOverlay);
+    const password = getAuth();
+    
+    if (!password) {
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.querySelector('div').classList.remove('scale-95');
+        overlay.querySelector('div').classList.add('scale-100');
+        return false;
+    } else {
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.querySelector('div').classList.add('scale-95');
+        overlay.querySelector('div').classList.remove('scale-100');
+        return true;
+    }
+}
+
+function initAuth() {
+    const form = document.querySelector(SELECTORS.loginForm);
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const password = document.querySelector(SELECTORS.loginPassword).value;
+        if (password) {
+            setAuth(password);
+            checkAuth();
+        }
+    });
+
+    checkAuth();
 }
 
 /**
@@ -153,11 +202,21 @@ async function analyze() {
     error.classList.add('hidden');
 
     try {
+        const password = getAuth();
         const res = await fetch("/api/analyze", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": password
+            },
             body: JSON.stringify({ url, model, lang })
         });
+
+        if (res.status === 401) {
+            clearAuth();
+            checkAuth();
+            throw new Error("Invalid password. Please try again.");
+        }
 
         const data = await res.json();
 
@@ -239,3 +298,4 @@ document.querySelector(SELECTORS.themeToggle).addEventListener('click', toggleTh
 // Initialize
 initTheme();
 initSlider();
+initAuth();

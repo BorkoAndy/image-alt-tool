@@ -10,6 +10,18 @@ from lib.vision import analyze_image
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
+            # Simple Authentication Check
+            auth_header = self.headers.get("Authorization")
+            app_password = os.environ.get("APP_PASSWORD")
+
+            if app_password and auth_header != app_password:
+                self.send_response(401)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
+                return
+
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length))
             
