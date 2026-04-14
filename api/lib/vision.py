@@ -3,16 +3,50 @@ import urllib.request
 import google.generativeai as genai
 from groq import Groq
 
+# Max image size: 10MB
+MAX_IMAGE_SIZE = 10 * 1024 * 1024 
+ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
 def analyze_image(image_url, model="gemini", lang="English"):
     """
     Analyzes an image and generates ALT text using Gemini or Groq.
+    Includes format, size, and safety verification.
     """
-    prompt = f"Generate a concise, descriptive ALT text for this image in {lang}. Maximum 100 characters. Return only the ALT text, nothing else."
+    # 1. Verify Image (Format and Size)
+    verify_image(image_url)
+
+    prompt = f"Generate a concise, descriptive ALT text for this image in {lang}. Maximum 100 characters. Return only the ALT text, nothing else. If the image is NSFW, harmful, or violates safety guidelines, return ONLY the word 'UNSAFE'."
 
     if model == "groq":
-        return _analyze_with_groq(image_url, prompt)
+        alt_text, limits = _analyze_with_groq(image_url, prompt)
     else:
-        return _analyze_with_gemini(image_url, prompt)
+        alt_text, limits = _analyze_with_gemini(image_url, prompt)
+
+    # 2. Hard Block Unsafe Content
+    if alt_text.strip().upper() == "UNSAFE":
+        raise ValueError("Image content violates safety guidelines.")
+
+    return alt_text, limits
+
+def verify_image(image_url):
+    """
+    Performs basic validation of the image before processing.
+    """
+    try:
+        req = urllib.request.Request(image_url, method='HEAD')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            content_type = resp.headers.get_content_type()
+            content_length = resp.headers.get('Content-Length')
+
+            if content_type not in ALLOWED_CONTENT_TYPES:
+                raise ValueError(f"Unsupported image format: {content_type}. Please use JPEG, PNG, WEBP, or GIF.")
+
+            if content_length and int(content_length) > MAX_IMAGE_SIZE:
+                raise ValueError(f"Image is too large ({int(content_length) // 1024 // 1024}MB). Max size is 10MB.")
+    except Exception as e:
+        if isinstance(e, ValueError): raise e
+        # If HEAD fails, we'll try to let the AI handle it or catch it during full download
+        pass
 
 def _analyze_with_groq(image_url, prompt):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -50,15 +84,29 @@ def _analyze_with_groq(image_url, prompt):
 
 def _analyze_with_gemini(image_url, prompt):
     genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-    gemini = genai.GenerativeModel("gemini-2.5-flash")
     
-    with urllib.request.urlopen(image_url) as resp:
+    # Configure safety settings to block unsafe content
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+    ]
+    
+    gemini = genai.GenerativeModel("gemini-1.5-flash", safety_settings=safety_settings)
+    
+    with urllib.request.urlopen(image_url, timeout=10) as resp:
         image_data = resp.read()
         content_type = resp.headers.get_content_type()
     
-    response = gemini.generate_content([
-        prompt,
-        {"mime_type": content_type, "data": image_data}
-    ])
-    
-    return response.text, None
+    try:
+        response = gemini.generate_content([
+            prompt,
+            {"mime_type": content_type, "data": image_data}
+        ])
+        return response.text, None
+    except Exception as e:
+        # Check if it was blocked by safety
+        if "safety" in str(e).lower() or "block" in str(e).lower():
+            raise ValueError("Image content violates safety guidelines.")
+        raise e
