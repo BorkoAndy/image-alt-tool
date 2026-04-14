@@ -4,194 +4,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ALT Text Generator</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      max-width: 600px;
-      margin: 60px auto;
-      padding: 0 20px;
-    }
-
-    h1 {
-      font-size: 1.4rem;
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: #666;
-      margin-bottom: 24px;
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-sizing: border-box;
-    }
-
-    button {
-      margin-top: 12px;
-      padding: 10px 24px;
-      background: #000;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      background: #999;
-    }
-
-    #result {
-      margin-top: 24px;
-      padding: 16px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      display: none;
-    }
-
-    #result label {
-      font-size: 0.85rem;
-      color: #666;
-    }
-
-    #alt-text {
-      margin-top: 6px;
-      font-size: 1rem;
-    }
-
-    #error {
-      margin-top: 16px;
-      color: red;
-      display: none;
-    }
-
-    #preview {
-      margin-top: 16px;
-      display: none;
-    }
-
-    #preview img {
-      max-width: 100%;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    #preview label {
-      font-size: 0.85rem;
-      color: #666;
-    }
-
-    #limits {
-      margin-top: 12px;
-      font-size: 0.8rem;
-      color: #999;
-      display: none;
-    }
-
-    #limits span {
-      margin-right: 16px;
-    }
-  </style>
+  <title>ALT Text Generator | Premium Image Analysis</title>
+  <meta name="description" content="Generate high-quality ALT text for your images using advanced AI models like Gemini and Llama.">
+  <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
 <body>
-  <h1>ALT Text Generator</h1>
+  <div class="container">
+    <h1>ALT Text Generator</h1>
+    <p class="subtitle">AI-powered image analysis for accessibility</p>
 
-  <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
-  <select id="model-select"
-    style="margin-top: 10px; width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
-    <!-- <option value="gemini">Gemini (Google)</option> -->
-    <option value="groq">Groq (Llama 4)</option>
-  </select>
-  <select id="lang-select"
-    style="margin-top: 10px; width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
-    <option value="English">English</option>
-    <option value="German">Deutsch</option>
-  </select>
-  <div id="preview">
-    <label>Image preview:</label><br>
-    <img id="preview-img" src="" alt="" />
+    <div class="form-group">
+      <label for="url-input">Image URL</label>
+      <input type="url" id="url-input" placeholder="https://example.com/image.jpg" required />
+    </div>
+
+    <div class="form-group">
+      <label for="model-select">AI Model</label>
+      <select id="model-select">
+        <option value="groq">Groq (Llama 4)</option>
+        <option value="gemini">Gemini (Google)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="lang-select">Output Language</label>
+      <select id="lang-select">
+        <option value="English">English</option>
+        <option value="German">Deutsch</option>
+        <option value="Spanish">Español</option>
+        <option value="French">Français</option>
+      </select>
+    </div>
+
+    <div id="preview">
+      <label>Image preview</label>
+      <img id="preview-img" src="" alt="" />
+    </div>
+
+    <button id="btn">Generate ALT text</button>
+
+    <div id="error"></div>
+
+    <div id="result">
+      <label>Generated ALT text</label>
+      <div id="alt-text"></div>
+      <div id="char-count"></div>
+    </div>
+
+    <div id="limits">
+      <span>RPM: <b id="rpm-remaining">?</b> / <b id="rpm-limit">?</b></span>
+      <span>RPD: <b id="rpd-remaining">?</b> / <b id="rpd-limit">?</b></span>
+    </div>
   </div>
-  <button id="btn" onclick="analyze()">Generate ALT text</button>
-  <div id="error"></div>
 
-  <div id="result">
-    <label>ALT text:</label>
-    <div id="alt-text"></div>
-    <div id="char-count" style="margin-top: 6px; font-size: 0.8rem; color: #999;"></div>
-  </div>
-  <div id="limits">
-    <span>Requests this minute: <b id="rpm-remaining">?</b> / <b id="rpm-limit">?</b></span>
-    <span>Requests today: <b id="rpd-remaining">?</b> / <b id="rpd-limit">?</b></span>
-  </div>
-
-
-  <script>
-    async function analyze() {
-      const url = document.getElementById("url-input").value.trim();
-      const btn = document.getElementById("btn");
-      const result = document.getElementById("result");
-      const altText = document.getElementById("alt-text");
-      const error = document.getElementById("error");
-      const model = document.getElementById("model-select").value;
-      const lang = document.getElementById("lang-select").value;
-      if (!url) return;
-
-      btn.disabled = true;
-      btn.textContent = "Analyzing...";
-      result.style.display = "none";
-      error.style.display = "none";
-
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, model, lang })
-        });
-        const data = await res.json();
-        if (data.alt_text) {
-          altText.textContent = data.alt_text;
-          document.getElementById("char-count").textContent = data.alt_text.length + " characters"; result.style.display = "block";
-          if (data.limits) {
-            document.getElementById("rpm-remaining").textContent = data.limits.rpm_remaining;
-            document.getElementById("rpm-limit").textContent = data.limits.rpm_limit;
-            document.getElementById("rpd-remaining").textContent = data.limits.rpd_remaining;
-            document.getElementById("rpd-limit").textContent = data.limits.rpd_limit;
-            document.getElementById("limits").style.display = "block";
-          } else {
-            document.getElementById("limits").style.display = "none";
-          }
-        } else {
-          throw new Error(data.error || "No result returned");
-        }
-      } catch (e) {
-        error.textContent = "Error: " + (e.message || "unknown error");
-        error.style.display = "block";
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Generate ALT text";
-      }
-    }
-
-    document.getElementById("url-input").addEventListener("input", function () {
-      const url = this.value.trim();
-      const preview = document.getElementById("preview");
-      const img = document.getElementById("preview-img");
-      if (url) {
-        img.src = url;
-        img.onload = () => preview.style.display = "block";
-        img.onerror = () => preview.style.display = "none";
-      } else {
-        preview.style.display = "none";
-      }
-    });
-  </script>
+  <script src="assets/js/app.js"></script>
 </body>
 
 </html>
