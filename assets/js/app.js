@@ -17,9 +17,34 @@ const SELECTORS = {
     rpmRemaining: '#rpm-remaining',
     rpmLimit: '#rpm-limit',
     rpdRemaining: '#rpd-remaining',
-    rpdLimit: '#rpd-limit'
+    rpdLimit: '#rpd-limit',
+    themeToggle: '#theme-toggle',
+    themeIcon: '#theme-toggle-icon'
 };
 
+/**
+ * Theme Management
+ */
+function initTheme() {
+    const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.querySelector(SELECTORS.themeIcon).textContent = '☀️';
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.querySelector(SELECTORS.themeIcon).textContent = '🌙';
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.querySelector(SELECTORS.themeIcon).textContent = isDark ? '☀️' : '🌙';
+}
+
+/**
+ * Image Analysis Logic
+ */
 async function analyze() {
     const url = document.querySelector(SELECTORS.urlInput).value.trim();
     const btn = document.querySelector(SELECTORS.btn);
@@ -34,9 +59,10 @@ async function analyze() {
     // UI Feedback
     btn.disabled = true;
     const originalBtnText = btn.textContent;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
     btn.textContent = "Analyzing...";
-    result.style.display = "none";
-    error.style.display = "none";
+    result.classList.add('hidden');
+    error.classList.add('hidden');
 
     try {
         const res = await fetch("/api/analyze", {
@@ -51,7 +77,7 @@ async function analyze() {
             // Success
             altText.textContent = data.alt_text;
             document.querySelector(SELECTORS.charCount).textContent = `${data.alt_text.length} characters`;
-            result.style.display = "block";
+            result.classList.remove('hidden');
 
             // Update Limits
             if (data.limits) {
@@ -59,18 +85,20 @@ async function analyze() {
                 document.querySelector(SELECTORS.rpmLimit).textContent = data.limits.rpm_limit;
                 document.querySelector(SELECTORS.rpdRemaining).textContent = data.limits.rpd_remaining;
                 document.querySelector(SELECTORS.rpdLimit).textContent = data.limits.rpd_limit;
-                document.querySelector(SELECTORS.limits).style.display = "flex";
+                document.querySelector(SELECTORS.limits).classList.remove('hidden');
+                document.querySelector(SELECTORS.limits).classList.add('flex');
             } else {
-                document.querySelector(SELECTORS.limits).style.display = "none";
+                document.querySelector(SELECTORS.limits).classList.add('hidden');
             }
         } else {
             throw new Error(data.error || "No result returned");
         }
     } catch (e) {
         error.textContent = "Error: " + (e.message || "unknown error");
-        error.style.display = "block";
+        error.classList.remove('hidden');
     } finally {
         btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
         btn.textContent = originalBtnText;
     }
 }
@@ -83,12 +111,16 @@ document.querySelector(SELECTORS.urlInput).addEventListener("input", function ()
     
     if (url) {
         img.src = url;
-        img.onload = () => preview.style.display = "block";
-        img.onerror = () => preview.style.display = "none";
+        img.onload = () => preview.classList.remove('hidden');
+        img.onerror = () => preview.classList.add('hidden');
     } else {
-        preview.style.display = "none";
+        preview.classList.add('hidden');
     }
 });
 
-// Event listener for button instead of onclick in HTML
+// Event Listeners
 document.querySelector(SELECTORS.btn).addEventListener('click', analyze);
+document.querySelector(SELECTORS.themeToggle).addEventListener('click', toggleTheme);
+
+// Initialize
+initTheme();
