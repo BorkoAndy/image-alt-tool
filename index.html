@@ -70,6 +70,22 @@
       color: red;
       display: none;
     }
+
+    #preview {
+      margin-top: 16px;
+      display: none;
+    }
+
+    #preview img {
+      max-width: 100%;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    #preview label {
+      font-size: 0.85rem;
+      color: #666;
+    }
   </style>
 </head>
 
@@ -78,6 +94,10 @@
   <p>Paste an image URL and get ready-to-use ALT text powered by Gemini AI.</p>
 
   <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
+  <div id="preview">
+    <label>Image preview:</label><br>
+    <img id="preview-img" src="" alt="" />
+  </div>
   <button id="btn" onclick="analyze()">Generate ALT text</button>
   <div id="error"></div>
 
@@ -122,6 +142,19 @@
         btn.textContent = "Generate ALT text";
       }
     }
+
+    document.getElementById("url-input").addEventListener("input", function () {
+      const url = this.value.trim();
+      const preview = document.getElementById("preview");
+      const img = document.getElementById("preview-img");
+      if (url) {
+        img.src = url;
+        img.onload = () => preview.style.display = "block";
+        img.onerror = () => preview.style.display = "none";
+      } else {
+        preview.style.display = "none";
+      }
+    });
   </script>
 </body>
 
