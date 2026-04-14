@@ -14,14 +14,15 @@ class handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             
             image_url = body.get("url", "")
+            image_data = body.get("image_data", "")
             model = body.get("model", "gemini")
             lang = body.get("lang", "English")
 
-            if not image_url:
-                raise ValueError("Image URL is required")
+            if not image_url and not image_data:
+                raise ValueError("Image URL or Image Data is required")
 
             # Call the extracted vision logic
-            alt_text, limits = analyze_image(image_url, model, lang)
+            alt_text, limits = analyze_image(image_url=image_url, base64_data=image_data, model=model, lang=lang)
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")

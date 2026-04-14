@@ -1,5 +1,6 @@
 import os
 import urllib.request
+import base64
 import google.generativeai as genai
 from groq import Groq
 
@@ -7,20 +8,44 @@ from groq import Groq
 MAX_IMAGE_SIZE = 10 * 1024 * 1024 
 ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-def analyze_image(image_url, model="gemini", lang="English"):
+def analyze_image(image_url=None, base64_data=None, model="gemini", lang="English"):
     """
-    Analyzes an image and generates ALT text using Gemini or Groq.
-    Includes format, size, and safety verification.
+    Analyzes an image and generates ALT text.
+    Supports either a public URL or base64 encoded data.
     """
-    # 1. Verify Image (Format and Size)
-    verify_image(image_url)
+    image_bytes = None
+    content_type = None
+
+    if base64_data:
+        # Handle base64 data
+        if ',' in base64_data:
+            header, base64_data = base64_data.split(',', 1)
+            if 'image/' in header:
+                content_type = header.split(';')[0].split(':')[1]
+        
+        image_bytes = base64.b64decode(base64_data)
+        if not content_type:
+            # Fallback to jpeg if not specified, or try to detect
+            content_type = "image/jpeg" 
+    elif image_url:
+        # 1. Verify and Download Image
+        verify_image(image_url)
+        with urllib.request.urlopen(image_url, timeout=10) as resp:
+            image_bytes = resp.read()
+            content_type = resp.headers.get_content_type()
+    else:
+        raise ValueError("Either image_url or base64_data must be provided.")
+
+    # Final size check for both sources
+    if len(image_bytes) > MAX_IMAGE_SIZE:
+        raise ValueError(f"Image is too large ({len(image_bytes) // 1024 // 1024}MB). Max size is 10MB.")
 
     prompt = f"Generate a concise, descriptive ALT text for this image in {lang}. Maximum 100 characters. Return only the ALT text, nothing else. If the image is NSFW, harmful, or violates safety guidelines, return ONLY the word 'UNSAFE'."
 
     if model == "groq":
-        alt_text, limits = _analyze_with_groq(image_url, prompt)
+        alt_text, limits = _analyze_with_groq(image_bytes, content_type, prompt)
     else:
-        alt_text, limits = _analyze_with_gemini(image_url, prompt)
+        alt_text, limits = _analyze_with_gemini(image_bytes, content_type, prompt)
 
     # 2. Hard Block Unsafe Content
     if alt_text.strip().upper() == "UNSAFE":
@@ -48,8 +73,13 @@ def verify_image(image_url):
         # If HEAD fails, we'll try to let the AI handle it or catch it during full download
         pass
 
-def _analyze_with_groq(image_url, prompt):
+def _analyze_with_groq(image_bytes, content_type, prompt):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    
+    # Convert bytes to base64 data URI for Groq
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+    image_url = f"data:{content_type};base64,{base64_image}"
+
     completion = client.chat.completions.with_raw_response.create(
         model="meta-llama/llama-4-scout-17b-16e-instruct",
         messages=[
@@ -82,7 +112,7 @@ def _analyze_with_groq(image_url, prompt):
     
     return alt_text, limits
 
-def _analyze_with_gemini(image_url, prompt):
+def _analyze_with_gemini(image_bytes, content_type, prompt):
     genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
     
     # Configure safety settings to block unsafe content
@@ -95,14 +125,10 @@ def _analyze_with_gemini(image_url, prompt):
     
     gemini = genai.GenerativeModel("gemini-1.5-flash", safety_settings=safety_settings)
     
-    with urllib.request.urlopen(image_url, timeout=10) as resp:
-        image_data = resp.read()
-        content_type = resp.headers.get_content_type()
-    
     try:
         response = gemini.generate_content([
             prompt,
-            {"mime_type": content_type, "data": image_data}
+            {"mime_type": content_type, "data": image_bytes}
         ])
         return response.text, None
     except Exception as e:
