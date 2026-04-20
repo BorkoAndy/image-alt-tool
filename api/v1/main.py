@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import router, analyze
-from .models import AnalysisRequest
-from .auth import verify_auth
-from fastapi import Depends
+from .routes import router
 
 app = FastAPI(
     title="Image Alt-Text API",
@@ -24,11 +21,6 @@ app.add_middleware(
 
 # Include the v1 routes
 app.include_router(router, prefix="/api/v1", tags=["v1"])
-
-# Legacy endpoint support
-@app.post("/api/analyze", tags=["legacy"])
-async def legacy_analyze(request: AnalysisRequest, auth: bool = Depends(verify_auth)):
-    return await analyze(request, auth)
 
 # Root health check
 @app.get("/")

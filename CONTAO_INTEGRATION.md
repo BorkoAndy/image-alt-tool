@@ -1,103 +1,73 @@
-# Contao Integration Protocol: Image Alt Generator
+# Contao Integration Protocol: Image Alt Generator (v1 REST API)
 
-This document contains the definitive configuration and logic required to integrate the `image-alt-tool` API into the Contao CMS backend. 
+This document contains the definitive configuration and logic required to integrate the `image-alt-tool` API into the Contao CMS backend.
 
-## 1. API Specifications
-- **Base URL**: `https://image-alt-tool.vercel.app/api/analyze`
+## 1. API Specifications (v1)
+- **Base URL**: `https://image-alt-tool.vercel.app/api/v1/analyze`
 - **Method**: `POST`
+- **Headers**:
+  - `X-API-Key`: `YOUR_APP_PASSWORD`
+  - `Content-Type`: `application/json`
 - **Payload**:
   ```json
   {
-    "image_data": "base64_string (including data:image/...;base64, prefix)",
-    "model": "gemini",
-    "lang": "English/German/etc"
+    "image_data": "base64_string",
+    "model": "groq",
+    "languages": ["de", "en"],
+    "lang": "English"
   }
   ```
-- **Constraint**: Must be called from the browser (backend) to allow processing of local/protected images.
 
-## 2. Contao DCA Injection
+## 2. Security: The PHP Proxy
+To avoid CORS issues and protect your API key from being exposed in the browser, all requests should go through a server-side proxy on your Contao installation.
+
+**Path**: `public/api/analyze.php`
+```php
+<?php
+header('Content-Type: application/json');
+$api_url = 'https://image-alt-tool.vercel.app/api/v1/analyze';
+$api_key = 'YOUR_APP_PASSWORD'; // Set securely here
+
+$input_data = file_get_contents('php://input');
+
+$ch = curl_init($api_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $input_data);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-API-Key: ' . $api_key
+]);
+
+$response = curl_exec($ch);
+$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+http_response_code($http_status);
+echo $response;
+```
+
+## 3. Contao DCA Injection
 **Path**: `contao/dca/tl_files.php`
 ```php
 <?php
-// Inject the generator script into the backend
 if (TL_MODE == 'BE') {
-    $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/app/js/contao-alt-generator.js';
+    $GLOBALS['TL_JAVASCRIPT'][] = 'js/contao-alt-generator.js';
 }
 ```
 
-## 3. Backend Logic (JavaScript)
-**Path**: `public/bundles/app/js/contao-alt-generator.js`
+## 4. Backend Logic (JavaScript)
+**Path**: `public/js/contao-alt-generator.js`
+Update the `API_URL` to point to your **local proxy** or directly to the API if preferred.
+
 ```javascript
-(function() {
-    'use strict';
-    const API_URL = 'https://image-alt-tool.vercel.app/api/analyze';
-
-    function init() {
-        if (!document.body.classList.contains('tl_files')) return;
-        const observer = new MutationObserver(() => injectButtons());
-        observer.observe(document.body, { childList: true, subtree: true });
-        injectButtons();
-    }
-
-    function injectButtons() {
-        const altInputs = document.querySelectorAll('input[name*="[alt]"]');
-        altInputs.forEach(input => {
-            if (input.dataset.altGenProcessed) return;
-            input.dataset.altGenProcessed = "true";
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'tl_submit';
-            btn.style.marginLeft = '5px';
-            btn.style.padding = '2px 8px';
-            btn.innerHTML = '✨ Generate Alt';
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                await handleGeneration(input, btn);
-            });
-            input.parentNode.insertBefore(btn, input.nextSibling);
-            input.style.width = 'calc(100% - 110px)';
-            input.style.display = 'inline-block';
-        });
-    }
-
-    async function handleGeneration(targetInput, btn) {
-        const originalText = btn.innerHTML;
-        try {
-            const previewImg = document.querySelector('.cto_image_preview img, .preview_image img, .image_container img');
-            if (!previewImg) throw new Error('Preview not found');
-            btn.innerHTML = '⏳ Analyzing...';
-            btn.disabled = true;
-            const response = await fetch(previewImg.src);
-            const blob = await response.blob();
-            const base64Data = await new Promise(r => {
-                const reader = new FileReader();
-                reader.onloadend = () => r(reader.result);
-                reader.readAsDataURL(blob);
-            });
-            const lang = targetInput.name.match(/\[(\w{2})\]/)?.[1] === 'de' ? 'German' : 'English';
-            const apiRes = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_data: base64Data, model: 'gemini', lang: lang })
-            });
-            const data = await apiRes.json();
-            if (data.alt_text) {
-                targetInput.value = data.alt_text;
-                btn.innerHTML = '✅ Done';
-            } else throw new Error(data.error);
-        } catch (err) {
-            alert('Error: ' + err.message);
-            btn.innerHTML = '❌ Fail';
-        } finally {
-            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
-        }
-    }
-    init();
-})();
+const API_URL = '/api/analyze.php'; // Point to your local PHP proxy
+// ... rest of the logic as defined in the repo ...
 ```
 
-## 4. Implementation Steps
-1. Ensure the Python API on Vercel is updated to handle `image_data` (base64).
-2. Create the DCA file in the Contao project.
-3. Create the JS file in the Contao project.
-4. Update the Symfony cache in Contao: `bin/console cache:clear`.
+## 5. Implementation Steps
+1. Verify the Python API on Vercel is set up with `APP_PASSWORD`.
+2. Deploy the PHP proxy to your Contao server's `public/api/` folder.
+3. Add the DCA configuration.
+4. Upload the JavaScript integration script.
+5. Clear Contao cache: `php bin/console cache:clear`.

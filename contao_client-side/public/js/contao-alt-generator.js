@@ -3,7 +3,7 @@
 
     console.log('Contao Alt Generator Loaded (V2.0)');
 
-    const API_URL = '/api/v1/analyze';
+    const API_URL = '/api/analyze.php';
     const APP_PASSWORD = 'Kx9#mP2vN$qL8@wR5yT!'; // Update this to match your APP_PASSWORD
 
 
