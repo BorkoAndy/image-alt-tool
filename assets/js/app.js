@@ -203,11 +203,11 @@ async function analyze() {
 
     try {
         const password = getAuth();
-        const res = await fetch("/api/analyze", {
+        const res = await fetch("/api/v1/analyze", {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
-                "Authorization": password
+                "X-API-Key": password
             },
             body: JSON.stringify({ url, model, lang })
         });

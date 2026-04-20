@@ -1,8 +1,12 @@
 {
     "rewrites": [
         {
+            "source": "/api/v1/(.*)",
+            "destination": "/api/v1/main.py"
+        },
+        {
             "source": "/api/analyze",
-            "destination": "/api/analyze.py"
+            "destination": "/api/v1/main.py"
         }
     ]
 }
