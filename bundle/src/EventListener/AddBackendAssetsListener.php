@@ -22,8 +22,7 @@ class AddBackendAssetsListener
             return;
         }
 
-        // Inject the JavaScript file from the bundle's public directory
-        // Symlinked by Contao to: public/bundles/ncwerbungcontaoaialttext/js/contao-alt-generator.js
+        // Symlinked by Contao from src/Resources/public to: public/bundles/ncwerbungcontaoaialttext/js/contao-alt-generator.js
         $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/ncwerbungcontaoaialttext/js/contao-alt-generator.js';
     }
 }
