@@ -1,0 +1,18 @@
+en:
+    title: AI Alt-Text Generator
+    description: >
+        This bundle integrates an AI-powered assistant into the Contao CMS to automatically generate
+        alternative texts, titles, and captions for your images. It streamlines the content management
+        process while improving accessibility and SEO.
+    keywords:
+        - AI
+        - Alt-Text
+        - Accessibility
+        - SEO
+        - Image Analysis
+    support:
+        issues: https://github.com/BorkoAndy/nc-werbung-contao-ai-alt-text-bundle/issues
+        homepage: https://www.nc-werbung.at
+    suggest:
+        contao/calendar-bundle: Generate alt texts for event images
+        contao/news-bundle: Generate alt texts for news images

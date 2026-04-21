@@ -8,10 +8,10 @@ It supports automatically generating Alt-Text, Titles, and Captions for images i
 
 ## Installation
 
-1. Search for `nc-werbung/contao-ai-alt-text-bundle` in the Contao Manager and install it.
+1. Search for `borko-andy/contao-ai-alt-text-bundle` in the Contao Manager and install it.
 2. Or use composer:
    ```bash
-   composer require nc-werbung/contao-ai-alt-text-bundle
+   composer require borko-andy/nc-werbung-contao-ai-alt-text-bundle
    ```
 
 ## Configuration

@@ -1,0 +1,18 @@
+de:
+    title: KI Alt-Text-Generator
+    description: >
+        Dieses Bundle integriert einen KI-gestützten Assistenten in das Contao CMS, um automatisch
+        Alternativtexte, Titel und Bildunterschriften für Ihre Bilder zu generieren. Es optimiert den
+        Content-Management-Prozess und verbessert gleichzeitig die Barrierefreiheit und SEO.
+    keywords:
+        - KI
+        - Alt-Text
+        - Barrierefreiheit
+        - SEO
+        - Bildanalyse
+    support:
+        issues: https://github.com/BorkoAndy/nc-werbung-contao-ai-alt-text-bundle/issues
+        homepage: https://www.nc-werbung.at
+    suggest:
+        contao/calendar-bundle: Alternativtexte für Event-Bilder generieren
+        contao/news-bundle: Alternativtexte für News-Bilder generieren
