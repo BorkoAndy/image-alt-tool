@@ -7,10 +7,21 @@
     const APP_PASSWORD = 'Kx9#mP2vN$qL8@wR5yT!'; // Update this to match your APP_PASSWORD
 
 
+    // Throttled re-injection to fight Stimulus/Turbo re-renders
+    let reinjectTimer = null;
+    function throttledInject() {
+        if (reinjectTimer) return;
+        reinjectTimer = setTimeout(() => {
+            injectButtons();
+            reinjectTimer = null;
+        }, 50);
+    }
+
     function init() {
-        const observer = new MutationObserver(() => injectButtons());
-        observer.observe(document.body, { childList: true, subtree: true });
         injectButtons();
+        // Watch entire document so Stimulus re-renders are caught
+        const observer = new MutationObserver(throttledInject);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
     }
 
     function injectButtons() {
