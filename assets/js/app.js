@@ -25,7 +25,8 @@ const SELECTORS = {
     sliderText: '#slider-text',
     loginOverlay: '#login-overlay',
     loginForm: '#login-form',
-    loginPassword: '#login-password'
+    loginPassword: '#login-password',
+    loginError: '#login-error'
 };
 
 let isVerified = false;
@@ -84,12 +85,18 @@ function checkAuth() {
 
 function initAuth() {
     const form = document.querySelector(SELECTORS.loginForm);
+    const loginError = document.querySelector(SELECTORS.loginError);
+
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const password = document.querySelector(SELECTORS.loginPassword).value;
+        const password = document.querySelector(SELECTORS.loginPassword).value.trim();
         if (password) {
             setAuth(password);
-            checkAuth();
+            if (checkAuth()) {
+                if (loginError) loginError.classList.add('hidden');
+            } else {
+                if (loginError) loginError.classList.remove('hidden');
+            }
         }
     });
 
@@ -151,15 +158,16 @@ function initSlider() {
     const completeVerification = () => {
         isVerified = true;
         isDragging = false;
-        handle.style.transform = `translateX(${track.clientWidth - handle.clientWidth - 8}px)`;
-        handle.classList.add('bg-green-500');
-        handle.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'cursor-grab');
-        handle.querySelector('span').textContent = '✓';
-        text.textContent = 'Verified';
-        text.classList.remove('text-gray-400');
-        text.classList.add('text-green-500', 'font-bold');
+        handle.style.transform = `translateX(${track.clientWidth - handle.clientWidth - 12}px)`;
+        handle.classList.add('bg-lime-500');
+        handle.classList.remove('bg-lime-400', 'cursor-grab');
+        handle.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />';
         
-        track.classList.add('border-green-500', 'bg-green-50/50', 'dark:bg-green-900/10');
+        text.textContent = 'Verification Complete';
+        text.classList.remove('text-gray-400');
+        text.classList.add('text-lime-500', 'font-bold');
+        
+        track.classList.add('border-lime-500/50', 'bg-lime-500/5');
         
         // Unlock analyze button
         btn.classList.remove('hidden');
@@ -260,16 +268,17 @@ function resetVerificationState() {
     const btn = document.querySelector(SELECTORS.btn);
 
     handle.style.transform = `translateX(0px)`;
-    handle.classList.remove('bg-green-500');
-    handle.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'cursor-grab');
-    handle.querySelector('span').textContent = '→';
+    handle.classList.add('transition-transform');
+    handle.classList.remove('bg-lime-500');
+    handle.classList.add('bg-lime-400', 'cursor-grab');
+    handle.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7" />';
     
     text.textContent = 'Slide to Analyze';
-    text.classList.remove('text-green-500', 'font-bold');
+    text.classList.remove('text-lime-500', 'font-bold');
     text.classList.add('text-gray-400');
     text.style.opacity = 1;
 
-    track.classList.remove('border-green-500', 'bg-green-50/50', 'dark:bg-green-900/10');
+    track.classList.remove('border-lime-500/50', 'bg-lime-500/5');
     btn.classList.add('hidden');
 }
 
