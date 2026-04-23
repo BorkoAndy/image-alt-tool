@@ -14,26 +14,22 @@
     }
 
     function injectButtons() {
-        // --- tl_files: inject button next to "Metadaten" heading ---
+        // --- 1. MetaWizard (tl_files / Meta Metadata) ---
         const metaLists = document.querySelectorAll('ul.tl_metawizard');
         metaLists.forEach(ul => {
-            if (ul.dataset.altGenProcessed) return;
-
-            // Check it has at least one language tab
-            const langItems = ul.querySelectorAll('li[data-language]');
-            if (langItems.length === 0) return;
-
-            ul.dataset.altGenProcessed = 'true';
-
-            // Find the h3 label above this ul
+            // Check if processing button exists in the header area
             const widget = ul.closest('.widget');
             if (!widget) return;
             const h3 = widget.querySelector('h3');
-            if (!h3) return;
+            if (!h3 || h3.querySelector('.alt-gen-btn-all')) return;
+
+            // Check if it has at least one language tab
+            const langItems = ul.querySelectorAll('li[data-language]');
+            if (langItems.length === 0) return;
 
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'tl_submit';
+            btn.className = 'tl_submit alt-gen-btn-all';
             btn.style.marginLeft = '10px';
             btn.style.padding = '2px 10px';
             btn.style.fontSize = '0.9em';
@@ -49,15 +45,16 @@
             h3.appendChild(btn);
         });
 
-        // --- tl_content / tl_news: inject per alt field ---
-        const altInputs = document.querySelectorAll('input[name="alt"]');
+        // --- 2. Standard Alt Fields (tl_content / tl_news) ---
+        const altInputs = document.querySelectorAll('input[name="alt"], input[id^="ctrl_alt"]');
         altInputs.forEach(input => {
-            if (input.dataset.altGenProcessed) return;
-            input.dataset.altGenProcessed = 'true';
+            // In Contao 5.7+, inputs might be inside a more complex widget-wrapper
+            const container = input.closest('.clr') || input.parentNode;
+            if (container.querySelector('.alt-gen-btn-single')) return;
 
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'tl_submit';
+            btn.className = 'tl_submit alt-gen-btn-single';
             btn.style.marginLeft = '5px';
             btn.style.padding = '2px 8px';
             btn.innerHTML = '✨ Generate Alt';
@@ -67,9 +64,9 @@
                 await handleSingleGeneration(input, btn);
             });
 
-            input.parentNode.insertBefore(btn, input.nextSibling);
             input.style.width = 'calc(100% - 130px)';
             input.style.display = 'inline-block';
+            input.after(btn);
         });
     }
 
@@ -152,7 +149,7 @@
 
             const apiRes = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': APP_PASSWORD
                 },
@@ -221,7 +218,7 @@
 
             const apiRes = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': APP_PASSWORD
                 },
