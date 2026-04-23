@@ -155,8 +155,10 @@
             });
 
             if (!apiRes.ok) {
-                const errorData = await apiRes.json();
-                throw new Error(errorData.error || 'API Error ' + apiRes.status);
+                const rawText = await apiRes.text();
+                let errorMsg = 'HTTP ' + apiRes.status;
+                try { const e = JSON.parse(rawText); errorMsg = e.error || errorMsg; } catch (_) { errorMsg += ' – Server returned non-JSON: ' + rawText.substring(0, 200); }
+                throw new Error(errorMsg);
             }
 
             const data = await apiRes.json();
@@ -218,8 +220,10 @@
             });
 
             if (!apiRes.ok) {
-                const errorData = await apiRes.json();
-                throw new Error(errorData.error || 'API Error ' + apiRes.status);
+                const rawText = await apiRes.text();
+                let errorMsg = 'HTTP ' + apiRes.status;
+                try { const e = JSON.parse(rawText); errorMsg = e.error || errorMsg; } catch (_) { errorMsg += ' – Server returned non-JSON: ' + rawText.substring(0, 200); }
+                throw new Error(errorMsg);
             }
 
             const data = await apiRes.json();

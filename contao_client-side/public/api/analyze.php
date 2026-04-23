@@ -1,67 +1,133 @@
 <?php
 
 /**
- * AI Alt-Text API Proxy
+ * AI Alt-Text API Proxy v2.1
  * Bypasses CORS restrictions by handling requests server-side.
- * Updated for v1 REST API structure.
+ *
+ * DEBUG: set ?debug=1 in the URL to get extra info without sending to API.
  */
 
-header('Content-Type: application/json');
+// Always return JSON — even for fatal errors
+header('Content-Type: application/json; charset=utf-8');
 
-// Target API URL (updated to v1)
+// Catch real PHP errors and return them as JSON instead of HTML
+// Ignore E_DEPRECATED (8192) and E_NOTICE (8) — these are non-fatal
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED
+        || $errno === E_NOTICE   || $errno === E_USER_NOTICE) {
+        return false; // let PHP handle it normally (log only)
+    }
+    http_response_code(500);
+    echo json_encode([
+        'error'   => 'PHP Error: ' . $errstr,
+        'code'    => $errno,
+        'file'    => basename($errfile),
+        'line'    => $errline,
+    ]);
+    exit;
+});
+
+// Target API URL
 $api_url = 'https://image-alt-tool.vercel.app/api/v1/analyze';
 
-// Get raw input
+// ── 1. Read POST body ────────────────────────────────────────────────────────
 $input_data = file_get_contents('php://input');
+
+if (empty($input_data)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'No data provided to proxy', 'hint' => 'POST body was empty']);
+    exit;
+}
+
+// ── 2. Get API key from headers (with PHP-FPM fallback) ──────────────────────
+$api_key = '';
+
+// Method A: getallheaders() (Apache / LiteSpeed)
+if (function_exists('getallheaders')) {
+    $all_headers = getallheaders();
+    if (is_array($all_headers)) {
+        // headers are case-insensitive — check both casings
+        $api_key = $all_headers['X-API-Key']
+                ?? $all_headers['x-api-key']
+                ?? $all_headers['X-Api-Key']
+                ?? '';
+    }
+}
+
+// Method B: $_SERVER fallback (works on PHP-FPM / nginx)
+if (empty($api_key)) {
+    $api_key = $_SERVER['HTTP_X_API_KEY'] ?? '';
+}
+
+// Method C: body fallback (legacy — password field in JSON)
 $data = json_decode($input_data, true);
-
-// Get headers
-$headers = getallheaders();
-$api_key = $headers['X-API-Key'] ?? $headers['x-api-key'] ?? '';
-
-// Fallback: if not in headers, check if it's in the JSON body (old style)
-if (empty($api_key) && is_array($data) && isset($data['password'])) {
+if (empty($api_key) && is_array($data) && !empty($data['password'])) {
     $api_key = $data['password'];
-    // Remove password from data before forwarding if it was there
     unset($data['password']);
     $input_data = json_encode($data);
 }
 
-if (empty($input_data)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'No data provided to proxy']);
+// ── 3. Debug mode ─────────────────────────────────────────────────────────────
+if (isset($_GET['debug'])) {
+    $decoded = json_decode($input_data, true);
+    $preview = null;
+    if (isset($decoded['image_data'])) {
+        $preview = substr($decoded['image_data'], 0, 60) . '...[truncated]';
+        $decoded['image_data'] = $preview;
+    }
+    echo json_encode([
+        'debug'          => true,
+        'api_url'        => $api_url,
+        'api_key_found'  => !empty($api_key),
+        'api_key_prefix' => !empty($api_key) ? substr($api_key, 0, 4) . '***' : '(none)',
+        'body_bytes'     => strlen($input_data),
+        'payload'        => $decoded,
+        'getallheaders_available' => function_exists('getallheaders'),
+    ]);
     exit;
 }
 
-// Initialize cURL session
+// ── 4. Check curl is available ────────────────────────────────────────────────
+if (!function_exists('curl_init')) {
+    http_response_code(500);
+    echo json_encode(['error' => 'PHP curl extension is not enabled on this server']);
+    exit;
+}
+
+// ── 5. Forward to Vercel API via cURL ────────────────────────────────────────
 $ch = curl_init($api_url);
 
-// Set cURL options
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, $input_data);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'X-API-Key: ' . $api_key,
-    'User-Agent: Contao-Alt-Generator-Proxy/2.0'
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $input_data,
+    CURLOPT_HTTPHEADER     => [
+        'Content-Type: application/json',
+        'Content-Length: ' . strlen($input_data),
+        'X-API-Key: ' . $api_key,
+        'User-Agent: Contao-Alt-Generator-Proxy/2.1',
+    ],
+    CURLOPT_CONNECTTIMEOUT => 10,
+    CURLOPT_TIMEOUT        => 60,   // WebP base64 can be slow — allow 60s
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_FOLLOWLOCATION => true,
 ]);
 
-// Timeout settings
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-// Execute the request
-$response = curl_exec($ch);
-$error = curl_error($ch);
+$response    = curl_exec($ch);
+$curl_error  = curl_error($ch);
+$curl_errno  = curl_errno($ch);
 $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+// curl_close() is a no-op since PHP 8.0 and deprecated in PHP 8.5 — omitted
 
-curl_close($ch);
-
-// Forward the response
-if ($error) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Proxy Error: ' . $error]);
-} else {
-    http_response_code($http_status);
-    echo $response;
+// ── 6. Return result ──────────────────────────────────────────────────────────
+if ($curl_error) {
+    http_response_code(502);
+    echo json_encode([
+        'error'      => 'cURL Error: ' . $curl_error,
+        'curl_errno' => $curl_errno,
+    ]);
+    exit;
 }
+
+http_response_code($http_status);
+echo $response;

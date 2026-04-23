@@ -158,6 +158,16 @@
 
             const base64Data = await fetchImageAsBase64(previewImg.src);
 
+            // --- DEBUG ---
+            const payload_meta = { image_data: base64Data.substring(0, 80) + '...[truncated]', model: 'groq', languages: languages };
+            console.group('%c[Alt-Gen] handleMetaGeneration → sending request', 'color: #4f8ef7; font-weight: bold');
+            console.log('URL:', API_URL);
+            console.log('Headers:', { 'Content-Type': 'application/json', 'X-API-Key': APP_PASSWORD.substring(0, 4) + '***' });
+            console.log('Payload:', payload_meta);
+            console.log('image_data length (chars):', base64Data.length);
+            console.groupEnd();
+            // --- END DEBUG ---
+
             const apiRes = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
@@ -171,12 +181,22 @@
                 })
             });
 
+            // --- DEBUG ---
+            const rawText_meta = await apiRes.text();
+            console.group('%c[Alt-Gen] handleMetaGeneration ← response', 'color: #e07b39; font-weight: bold');
+            console.log('HTTP status:', apiRes.status, apiRes.statusText);
+            console.log('Content-Type:', apiRes.headers.get('Content-Type'));
+            console.log('Raw response (first 500 chars):', rawText_meta.substring(0, 500));
+            console.groupEnd();
+            // --- END DEBUG ---
+
             if (!apiRes.ok) {
-                const errorData = await apiRes.json();
-                throw new Error(errorData.error || 'API Error ' + apiRes.status);
+                let errMsg = 'HTTP ' + apiRes.status;
+                try { errMsg = JSON.parse(rawText_meta).error || errMsg; } catch (_) { errMsg += ' – ' + rawText_meta.substring(0, 200); }
+                throw new Error(errMsg);
             }
 
-            const data = await apiRes.json();
+            const data = JSON.parse(rawText_meta);
 
             // Fill all fields for all detected languages
             // data.meta = { de: { alt, title, caption }, en: { alt, title, caption }, ru: {...}, ... }
@@ -227,6 +247,17 @@
             const langCode = langMatches ? langMatches[1] : (document.documentElement.lang || 'en');
             const lang = langCode.startsWith('de') ? 'German' : 'English';
 
+            // --- DEBUG ---
+            const payload_single = { image_data: base64Data.substring(0, 80) + '...[truncated]', model: 'groq', lang: lang };
+            console.group('%c[Alt-Gen] handleSingleGeneration → sending request', 'color: #4f8ef7; font-weight: bold');
+            console.log('URL:', API_URL);
+            console.log('Headers:', { 'Content-Type': 'application/json', 'X-API-Key': APP_PASSWORD.substring(0, 4) + '***' });
+            console.log('Payload:', payload_single);
+            console.log('image_data length (chars):', base64Data.length);
+            console.log('input name:', targetInput.name, '→ lang:', lang);
+            console.groupEnd();
+            // --- END DEBUG ---
+
             const apiRes = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
@@ -240,12 +271,22 @@
                 })
             });
 
+            // --- DEBUG ---
+            const rawText_single = await apiRes.text();
+            console.group('%c[Alt-Gen] handleSingleGeneration ← response', 'color: #e07b39; font-weight: bold');
+            console.log('HTTP status:', apiRes.status, apiRes.statusText);
+            console.log('Content-Type:', apiRes.headers.get('Content-Type'));
+            console.log('Raw response (first 500 chars):', rawText_single.substring(0, 500));
+            console.groupEnd();
+            // --- END DEBUG ---
+
             if (!apiRes.ok) {
-                const errorData = await apiRes.json();
-                throw new Error(errorData.error || 'API Error ' + apiRes.status);
+                let errMsg = 'HTTP ' + apiRes.status;
+                try { errMsg = JSON.parse(rawText_single).error || errMsg; } catch (_) { errMsg += ' – ' + rawText_single.substring(0, 200); }
+                throw new Error(errMsg);
             }
 
-            const data = await apiRes.json();
+            const data = JSON.parse(rawText_single);
 
             if (data.alt_text) {
                 targetInput.value = data.alt_text;
