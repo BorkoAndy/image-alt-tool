@@ -131,7 +131,7 @@ def _analyze_with_groq(image_bytes, content_type, prompt):
     image_data_url = f"data:{content_type};base64,{base64_image}"
 
     completion = client.chat.completions.with_raw_response.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="qwen/qwen3.6-27b",
         messages=[
             {
                 "role": "user",
